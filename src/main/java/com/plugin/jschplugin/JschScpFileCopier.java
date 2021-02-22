@@ -269,7 +269,7 @@ public class JschScpFileCopier extends BaseFileCopier implements MultiFileCopier
                 node,
                 nodeAuthentication.getCommandTimeout(),
                 nodeAuthentication.getConnectTimeout(),
-                context.getIFramework()
+                context.getFramework()
         );
         final String errormsg = failure.getErrormsg();
         FailureReason failureReason = failure.getReason();

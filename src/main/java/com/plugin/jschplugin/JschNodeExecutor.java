@@ -48,6 +48,7 @@ import com.dtolabs.rundeck.plugins.util.DescriptionBuilder;
 import com.dtolabs.rundeck.plugins.util.PropertyBuilder;
 import com.jcraft.jsch.JSchException;
 import com.plugin.jschplugin.util.ResolverUtil;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.tools.ant.BuildException;
@@ -74,6 +75,7 @@ import java.util.concurrent.*;
 public class JschNodeExecutor implements NodeExecutor, Describable {
     public static final Logger logger                           = LoggerFactory.getLogger(JschNodeExecutor.class.getName());
     public static final String SERVICE_PROVIDER_TYPE            = "jsch-sa-ssh";
+    public static final String SERVICE_TITLE                    = "JSCH-SA-SSH";
     public static final String FWK_PROP_AUTH_CANCEL_MSG         = "framework.messages.error.ssh.authcancel";
     public static final String FWK_PROP_AUTH_CANCEL_MSG_DEFAULT =
         "Authentication failure connecting to node: \"{0}\". Make sure your resource definitions and credentials are up to date.";
@@ -115,6 +117,10 @@ public class JschNodeExecutor implements NodeExecutor, Describable {
     public static final String NODE_ATTR_ALWAYS_SET_PTY = "always-set-pty";
     public static final String FWK_PROP_SET_PTY = FWK_PROP_PREFIX + NODE_ATTR_ALWAYS_SET_PTY;
     public static final String PROJ_PROP_SET_PTY = PROJ_PROP_PREFIX + NODE_ATTR_ALWAYS_SET_PTY;
+
+    public static final String NODE_ATTR_ESCAPED_COMMAND = "non-escaped-command";
+    public static final String FWK_PROP_ESCAPED_COMMAND = FWK_PROP_PREFIX + NODE_ATTR_ESCAPED_COMMAND;
+    public static final String PROJ_PROP_ESCAPED_COMMAND = PROJ_PROP_PREFIX + NODE_ATTR_ESCAPED_COMMAND;
 
     public static final String NODE_BRIND_ADDRESS = "bind-address";
     public static final String FWK_PROP_BRIND_ADDRESS = FWK_PROP_PREFIX + NODE_BRIND_ADDRESS;
@@ -186,6 +192,7 @@ public class JschNodeExecutor implements NodeExecutor, Describable {
     public static final String CONFIG_CON_TIMEOUT = "ssh-connection-timeout";
     public static final String CONFIG_COMMAND_TIMEOUT = "ssh-command-timeout";
     public static final String CONFIG_BIND_ADDRESS = "ssh-bind-address";
+    public static final String CONFIG_ESCAPED_COMMAND = "non-escaped-command";
     public static final String CONFIG_PASS_ENV = NODE_ATTR_PASS_ENV;
 
     static final Description DESC ;
@@ -270,10 +277,14 @@ public class JschNodeExecutor implements NodeExecutor, Describable {
                     "See [rundeck documentation for more info about passing environment variables through remote command](https://docs.rundeck.com/docs/administration/projects/node-execution/ssh.html#passing-environment-variables-through-remote-command)",
             false, null);
 
+    public static final Property ALLOW_NON_ESCAPED_COMMANDS = PropertyUtil.bool(CONFIG_ESCAPED_COMMAND, "Allow unsecure non escaped commands",
+            "Commands with options replaced will not be executed as literal",
+            false, "false");
+
     static {
         DescriptionBuilder builder = DescriptionBuilder.builder();
         builder.name(SERVICE_PROVIDER_TYPE)
-                .title("SSH")
+                .title(SERVICE_TITLE)
                 .description("Executes a command on a remote node via SSH.")
                 ;
 
@@ -287,6 +298,7 @@ public class JschNodeExecutor implements NodeExecutor, Describable {
         builder.property(PROP_COMMAND_TIMEOUT);
         builder.property(PROP_BIND_ADDRESS);
         builder.property(PASS_ENV_VAR);
+        builder.property(ALLOW_NON_ESCAPED_COMMANDS);
 
         builder.mapping(CONFIG_KEYPATH, PROJ_PROP_SSH_KEYPATH);
         builder.frameworkMapping(CONFIG_KEYPATH, FWK_PROP_SSH_KEYPATH);
@@ -314,6 +326,9 @@ public class JschNodeExecutor implements NodeExecutor, Describable {
         builder.mapping(CONFIG_PASS_ENV, PROJ_PROP_PASS_ENV);
         builder.frameworkMapping(CONFIG_PASS_ENV, FWK_PROP_PASS_ENV);
 
+        builder.mapping(CONFIG_ESCAPED_COMMAND, PROJ_PROP_ESCAPED_COMMAND);
+        builder.frameworkMapping(CONFIG_ESCAPED_COMMAND, FWK_PROP_ESCAPED_COMMAND);
+
         DESC=builder.build();
     }
 
@@ -326,8 +341,32 @@ public class JschNodeExecutor implements NodeExecutor, Describable {
         return DESC;
     }
 
+    private String[] cleanCommands(String[] commands, boolean escapeCommand){
+        int i = 0;
+        if(!escapeCommand){
+            return commands;
+        }
+        String[] cleanCommands = new String[commands.length];
+        for (String commandPiece: commands) {
+            if(commandPiece.contains("'")){
+                commandPiece = StringUtils.removeStart(commandPiece, "'");
+                commandPiece = StringUtils.removeEnd(commandPiece, "'");
+            }
+            System.out.println("commandPiece " + i + " : " + commandPiece);
+            cleanCommands[i] = commandPiece;
+            i++;
+        }
+
+        return cleanCommands;
+    }
+
     public NodeExecutorResult executeCommand(final ExecutionContext context, final String[] command,
                                              final INodeEntry node)  {
+
+        boolean escapeCommand = ResolverUtil.resolveBooleanProperty(CONFIG_ESCAPED_COMMAND, false,
+                node, context.getFramework().getFrameworkProjectMgr().getFrameworkProject(context.getFrameworkProject()),
+                context.getFramework());
+        String[] cleanedCommands = cleanCommands(command, escapeCommand);
         if (null == node.getHostname() || null == node.extractHostname() || StringUtils.isBlank(node.extractHostname())) {
             return NodeExecutorResultImpl.createFailure(
                 StepFailureReason.ConfigurationFailure,
@@ -336,12 +375,12 @@ public class JschNodeExecutor implements NodeExecutor, Describable {
             );
         }
         boolean forceNewPty = ResolverUtil.resolveBooleanProperty(CONFIG_SET_PTY, false,
-                                                                  node, context.getIFramework().getFrameworkProjectMgr().getFrameworkProject(context.getFrameworkProject()),
-                                                                  context.getIFramework());
+                                                                  node, context.getFramework().getFrameworkProjectMgr().getFrameworkProject(context.getFrameworkProject()),
+                                                                  context.getFramework());
 
         boolean passEnvVar = ResolverUtil.resolveBooleanProperty(CONFIG_PASS_ENV, false,
-                                                                                            node, context.getIFramework().getFrameworkProjectMgr().getFrameworkProject(context.getFrameworkProject()),
-                                                                                            context.getIFramework());
+                                                                                            node, context.getFramework().getFrameworkProjectMgr().getFrameworkProject(context.getFrameworkProject()),
+                                                                                            context.getFramework());
 
         final ExecutionListener listener = context.getExecutionListener();
         final Project project = new Project();
@@ -353,7 +392,7 @@ public class JschNodeExecutor implements NodeExecutor, Describable {
         final NodeSSHConnectionInfo nodeAuthentication = new NodeSSHConnectionInfo(node, context);
         try {
 
-            sshexec = SSHTaskBuilder.build(node, command, project, context.getDataContext(),
+            sshexec = SSHTaskBuilder.build(node, cleanedCommands, project, context.getDataContext(),
                                            nodeAuthentication, context.getLoglevel(),listener);
         } catch (SSHTaskBuilder.BuilderException e) {
             return NodeExecutorResultImpl.createFailure(StepFailureReason.ConfigurationFailure,
@@ -387,7 +426,7 @@ public class JschNodeExecutor implements NodeExecutor, Describable {
                                                         e.getMessage(), node);
         }
         Runnable responderCleanup=null;
-        if (sudoResponder.isSudoEnabled() && sudoResponder.matchesCommandPattern(command[0])) {
+        if (sudoResponder.isSudoEnabled() && sudoResponder.matchesCommandPattern(cleanedCommands[0])) {
             final DisconnectResultHandler resultHandler = new DisconnectResultHandler();
 
             //configure two piped i/o stream pairs, to connect to the input/output of the SSH connection
@@ -428,7 +467,7 @@ public class JschNodeExecutor implements NodeExecutor, Describable {
                                                             e.getMessage(), node);
             }
             if (sudoResponder2.isSudoEnabled()
-                && sudoResponder2.matchesCommandPattern(CLIUtils.generateArgline(null, command, false))) {
+                && sudoResponder2.matchesCommandPattern(CLIUtils.generateArgline(null, cleanedCommands, false))) {
                 logger.debug("Enable second sudo responder");
 
                 sudoResponder2.setDescription("Second " + SudoResponder.DEFAULT_DESCRIPTION);
@@ -494,7 +533,7 @@ public class JschNodeExecutor implements NodeExecutor, Describable {
             sshexec.execute();
             success = true;
         } catch (BuildException e) {
-            final ExtractFailure extractJschFailure = extractFailure(e, node, commandtimeout, contimeout, context.getIFramework());
+            final ExtractFailure extractJschFailure = extractFailure(e, node, commandtimeout, contimeout, context.getFramework());
             errormsg = extractJschFailure.getErrormsg();
             failureReason = extractJschFailure.getReason();
             context.getExecutionListener().log(

@@ -45,7 +45,7 @@ final class NodeSSHConnectionInfo implements SSHTaskBuilder.SSHConnectionInfo {
     NodeSSHConnectionInfo(final INodeEntry node, final ExecutionContext context) {
 
         this.node = node;
-        this.framework = context.getIFramework();
+        this.framework = context.getFramework();
         this.context = context;
         this.frameworkProject = framework.getFrameworkProjectMgr().getFrameworkProject(
             context.getFrameworkProject());

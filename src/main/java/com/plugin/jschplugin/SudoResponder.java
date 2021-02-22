@@ -90,8 +90,8 @@ class SudoResponder implements Responder {
                                                               defaultSudoCommandPattern);
         sudoResponder.init(
                 node,
-                context.getIFramework().getFrameworkProjectMgr().getFrameworkProject(context.getFrameworkProject()),
-                context.getIFramework()
+                context.getFramework().getFrameworkProjectMgr().getFrameworkProject(context.getFrameworkProject()),
+                context.getFramework()
         );
         return sudoResponder;
     }

@@ -20,7 +20,7 @@ public class PropertyResolver {
 
     public PropertyResolver(INodeEntry node, ExecutionContext context) {
         this.node = node;
-        this.framework = context.getIFramework();
+        this.framework = context.getFramework();
         this.context = context;
         this.frameworkProject = framework.getFrameworkProjectMgr().getFrameworkProject(
                 context.getFrameworkProject());
