@@ -57,7 +57,7 @@ import java.util.List;
  */
 @Plugin(name=JschScpFileCopier.SERVICE_PROVIDER_TYPE,service= ServiceNameConstants.FileCopier)
 public class JschScpFileCopier extends BaseFileCopier implements MultiFileCopier, Describable {
-    public static final String SERVICE_PROVIDER_TYPE = "jsch-sa-scp";
+    public static final String SERVICE_PROVIDER_TYPE = "jsch-scp";
 
 
     static final Description DESC = DescriptionBuilder.builder()

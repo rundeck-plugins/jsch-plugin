@@ -73,7 +73,7 @@ import java.util.concurrent.*;
 @Plugin(name=JschNodeExecutor.SERVICE_PROVIDER_TYPE,service= ServiceNameConstants.NodeExecutor)
 public class JschNodeExecutor implements NodeExecutor, Describable {
     public static final Logger logger                           = LoggerFactory.getLogger(JschNodeExecutor.class.getName());
-    public static final String SERVICE_PROVIDER_TYPE            = "jsch-sa-ssh";
+    public static final String SERVICE_PROVIDER_TYPE            = "jsch-ssh";
     public static final String FWK_PROP_AUTH_CANCEL_MSG         = "framework.messages.error.ssh.authcancel";
     public static final String FWK_PROP_AUTH_CANCEL_MSG_DEFAULT =
         "Authentication failure connecting to node: \"{0}\". Make sure your resource definitions and credentials are up to date.";

@@ -18,11 +18,6 @@ cp build/libs/jsch-plugin-x.x.x.jar $RDECK_BASE/libext
 This plugin is a standalone version of the JSCH plugin that comes built into Rundeck.
 The JSCH [documentation](https://docs.rundeck.com/docs/administration/projects/node-execution/ssh.html)  applies to this plugin.
 
-The names of the plugins have been changed to avoid clashing with the built-in version.
-
-Node Executor: jsch-sa-ssh
-File Copier: jsch-sa-scp
-
 ### Set it at project level
 
 Go to `Project Settings > Edit Configuration` to set the JSCH plugin at project level
@@ -38,8 +33,8 @@ Demo-Ubuntu:
   description: Ubuntu 20
   username: samuel
   osFamily: unix
-  node-executor: jsch-sa-ssh
-  file-copier: jsch-sa-scp
+  node-executor: jsch-ssh
+  file-copier: jsch-scp
   tags: ubuntu
   ssh-authentication: password
   ssh-password-storage-path: keys/node/samuel.password
