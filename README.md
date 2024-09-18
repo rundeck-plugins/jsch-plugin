@@ -1,3 +1,9 @@
+# UNUSED
+
+Note: this code is not used, the jsch-plugin used by Rundeck is part of https://github.com/rundeck/rundeck 
+
+---
+
 # jsch-plugin Rundeck Plugin
 
 This is a node executor / File Copier plugin based on [JSCH](http://www.jcraft.com/jsch/) library
